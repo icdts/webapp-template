@@ -1,3 +1,126 @@
-body { font-family: system-ui, sans-serif; padding: 2rem; max-width: 600px; margin: 0 auto; background-color: #f9f9f9; }
-.card { border: 1px solid #ddd; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); background: white; }
-h1 { color: #cc0000; }
+/* static/style.css */
+
+:root {
+    --primary-red: #cc0000;
+    --bg-gray: #f8fafc;
+    --border-gray: #e2e8f0;
+    --text-dark: #1e293b;
+    --text-muted: #64748b;
+}
+
+body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background-color: var(--bg-gray);
+    color: var(--text-dark);
+    line-height: 1.5;
+    padding: 2rem;
+    margin: 0;
+    display: flex;
+    justify-content: center;
+}
+
+.card {
+    background: white;
+    width: 100%;
+    max-width: 900px;
+    padding: 2.5rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    border: 1px solid var(--border-gray);
+}
+
+h1 {
+    color: var(--primary-red);
+    font-size: 1.8rem;
+    letter-spacing: -0.025em;
+}
+
+hr {
+    border: 0;
+    border-top: 1px solid var(--border-gray);
+    margin: 2rem 0;
+}
+
+/* Table Styling */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1.5rem 0;
+}
+
+th {
+    text-align: left;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    padding: 12px;
+    border-bottom: 2px solid var(--border-gray);
+}
+
+td {
+    padding: 16px 12px;
+    border-bottom: 1px solid var(--border-gray);
+    vertical-align: middle;
+}
+
+code {
+    background: #f1f5f9;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'Cascadia Code', 'Fira Code', monospace;
+    font-size: 0.9em;
+}
+
+/* Verification Text Block */
+.verification-text {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.85em;
+    color: #475569;
+    background: #f1f5f9;
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: 1px solid #cbd5e1;
+    display: inline-block;
+}
+
+/* HTMX Button */
+.ping-btn {
+    background-color: #2563eb;
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.ping-btn:hover {
+    background-color: #1d4ed8;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.ping-btn:active {
+    transform: translateY(0);
+}
+
+/* Footer Links */
+.system-footer {
+    margin-top: 3rem;
+    text-align: center;
+    font-size: 0.85rem;
+}
+
+.system-footer a {
+    color: #3b82f6;
+    text-decoration: none;
+    font-weight: 500;
+    margin: 0 10px;
+}
+
+.system-footer a:hover {
+    text-decoration: underline;
+}

@@ -24,6 +24,7 @@ FROM base AS dev
 
 
 FROM base AS builder
+	ENV CGO_ENABLED=1
 	COPY . .
 	COPY vendor/ vendor/
 	RUN go build -mod=vendor -o main ./cmd/web/main.go

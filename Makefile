@@ -39,6 +39,8 @@ container-dev: prep
 		-v "$(PWD):/app" \
 		--userns=keep-id \
 		--user $$(id -u):0 \
+		-e GOCACHE=/app/tmp/build/.cache \
+		-e GOPATH=/app/tmp/build/go \
 		--name webapp-dev \
 		$(IMAGE_DEV)
 

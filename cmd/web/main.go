@@ -8,7 +8,19 @@ import (
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/icdts/webapp/internal/db"
+	"github.com/icdts/webapp/internal/models"
+
+	"github.com/jmoiron/sqlx"
 )
+
+// AppData holds data passed to templates
+type AppData struct {
+	Items []models.Item
+}
+
+type HandleFuncWithDb func(*sqlx.DB, http.ResponseWriter, *http.Request)
 
 func main() {
 	var err error
@@ -28,17 +40,24 @@ func main() {
 	}
 	log.Printf("HTMX file: %s", htmxPath)
 
-	http.HandleFunc("/healthz", healthz)
-	http.HandleFunc("/readyz", readyz)
+	dbPath := "tmp/app.db"
+	database, err := db.Connect(dbPath)
+	if err != nil {
+		log.Fatal("Failed to init DB:", err)
+	}
+	defer database.Close()
 
-	http.HandleFunc("/assets/htmx.js", func(w http.ResponseWriter, r *http.Request) { http.ServeFile(w, r, htmxPath) })
-	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
-	http.HandleFunc("/", pageIndex)
-	http.HandleFunc("/time", pageTime)
+	setupRoutes(htmxPath, database)
 
 	log.Printf("Server starting on :%d", port)
 	if err := http.ListenAndServe(fmt.Sprintf(":%d", port), nil); err != nil {
 		log.Fatal(err)
+	}
+}
+
+func withDatabase(d *sqlx.DB, f HandleFuncWithDb) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		f(d, w, r)
 	}
 }
 
@@ -47,25 +66,42 @@ func healthz(w http.ResponseWriter, _ *http.Request) {
 	w.Write([]byte("ok"))
 }
 
-func readyz(w http.ResponseWriter, _ *http.Request) {
-	// TODO: In real app, you need to check database and/or cache
-	// if db.Ping() != nil { http.Error(w,"DB Not Ready", 503); return }
+func readyz(database *sqlx.DB, w http.ResponseWriter, _ *http.Request) {
+	if database.Ping() != nil {
+		http.Error(w, "DB Not Ready", 503)
+		return
+	}
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("ready"))
 }
 
-func pageIndex(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != "/" {
-		http.NotFound(w, r)
+func setupRoutes(htmxPath string, database *sqlx.DB) {
+	http.HandleFunc("/healthz", healthz)
+	http.HandleFunc("/readyz", withDatabase(database, readyz))
+
+	http.HandleFunc("/assets/htmx.js", func(w http.ResponseWriter, r *http.Request) { http.ServeFile(w, r, htmxPath) })
+	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
+	http.HandleFunc("/", withDatabase(database, pageIndex))
+	http.HandleFunc("/time", pageTime)
+}
+
+func pageIndex(database *sqlx.DB, w http.ResponseWriter, r *http.Request) {
+	items := []models.Item{}
+	// Select directly into the struct slice
+	err := database.Select(&items, "SELECT * FROM items ORDER BY id ASC")
+	if err != nil {
+		http.Error(w, err.Error(), 500)
 		return
 	}
 
 	tmpl, err := template.ParseFiles("views/index.html")
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, err.Error(), 500)
 		return
 	}
-	tmpl.Execute(w, nil)
+
+	data := AppData{Items: items}
+	tmpl.Execute(w, data)
 }
 
 func pageTime(w http.ResponseWriter, r *http.Request) {
