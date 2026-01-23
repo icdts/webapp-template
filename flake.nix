@@ -23,10 +23,18 @@
             air
           ];
 
-          shellHook = ''
-            echo "Go version: $(go version)"
-          '';
-
+          shellHook =
+            let
+              htmxFile = pkgs.fetchurl {
+                url = "https://cdn.jsdelivr.net/npm/htmx.org@2.0.8/dist/htmx.min.js";
+                sha256 = "04qksd80lz91ap9c306ms41sfmkjvkg1p2m8y0a5jm5pikv3wa12";
+              };
+            in
+            ''
+              echo "Go version $(go version)"
+              export HTMX_SRC=${htmxFile}
+              echo "HTMX_SRC -> $HTMX_SRC"
+            '';
         };
       });
     };
