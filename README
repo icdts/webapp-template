@@ -1,0 +1,78 @@
+
+## Security and Podman Setup
+
+This project uses strict GPG verification for all container images. We use Red Hat's official UBI images and verify them against the official Red Hat Product Key.
+
+### One-Time Setup: Configure Signature Lookups
+Red Hat stores image signatures on a separate server rather than bundling them inside the image. You must configure your local Podman to know where to find these signatures.
+
+Run this command once on your machine to install the registry configuration:
+
+```bash
+# 1. Ensure the user config directory exists
+mkdir -p ~/.config/containers/registries.d
+
+# 2. Install the project's Red Hat configuration
+cp config/registries.yaml ~/.config/containers/registries.d/redhat.yaml
+
+
+## Updating HTMX
+
+This project uses a vendored version of HTMX to ensure offline availability and build reproducibility. If a new version is required, `flake.nix` must be updated.
+
+### 1. Select the Version
+Identify the desired version number (e.g., `2.0.8`) and construct the JSDelivr URL:
+
+* **URL Pattern:** `https://cdn.jsdelivr.net/npm/htmx.org@<VERSION>/dist/htmx.min.js`
+
+### 2. Generate Hash
+Run the following command to download the specific version and generate the SHA-256 hash required by Nix. Replace `<VERSION>` with the target version.
+
+```bash
+nix-prefetch-url [https://cdn.jsdelivr.net/npm/htmx.org](https://cdn.jsdelivr.net/npm/htmx.org)@<VERSION>/dist/htmx.min.js
+```
+
+### 3. Update Configuration
+Edit `flake.nix` with the new URL and hash values:
+
+```nix
+htmxFile = pkgs.fetchurl {
+  url = "[https://cdn.jsdelivr.net/npm/htmx.org](https://cdn.jsdelivr.net/npm/htmx.org)@<VERSION>/dist/htmx.min.js";
+  sha256 = "<PASTE_NEW_HASH_HERE>";
+};
+```
+
+
+## Updating the Red Hat GPG Key
+
+This project verifies the integrity of Red Hat Universal Base Images (UBI) using the official Red Hat Product Signing Key. If Red Hat rotates the key or the project migrates to a newer major version of UBI, `flake.nix` must be updated.
+
+### 1. Identify the Correct Key
+Visit the **[Red Hat Product Signing Keys](https://access.redhat.com/security/team/key)** page. Locate the "Release" key for the target OS version (e.g., Red Hat Enterprise Linux 9).
+
+* **Key ID (RHEL 9):** `fd431d51`
+* **Key URL:** `https://www.redhat.com/security/data/fd431d51.txt`
+
+### 2. Verify Fingerprint and Hash
+Run the following commands to download the key, verify its fingerprint against the Red Hat website, and generate the SHA-256 hash required by Nix.
+
+```bash
+# 1. Download the key
+curl -O [https://www.redhat.com/security/data/fd431d51.txt](https://www.redhat.com/security/data/fd431d51.txt)
+
+# 2. Verify fingerprint matches the Red Hat website
+gpg --with-fingerprint fd431d51.txt
+
+# 3. Generate Nix-compatible SHA-256 hash
+nix-prefetch-url [https://www.redhat.com/security/data/fd431d51.txt](https://www.redhat.com/security/data/fd431d51.txt)
+```
+
+### 3. Update Configuration
+Edit `flake.nix` with the new URL and hash values:
+
+```nix
+redhatKey = pkgs.fetchurl {
+  url = "[https://www.redhat.com/security/data/fd431d51.txt](https://www.redhat.com/security/data/fd431d51.txt)";
+  sha256 = "<PASTE_NEW_HASH_HERE>"; 
+};
+```

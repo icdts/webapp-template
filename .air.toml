@@ -1,9 +1,9 @@
 root = "."
-tmp_dir = "tmp"
+tmp_dir = "tmp/build"
 
 [build]
-	cmd = "go build -o ./tmp/main ./cmd/web/main.go"
-	bin = "./tmp/main"
+	cmd = "go build -o ./tmp/build/main ./cmd/web/main.go"
+	bin = "./tmp/build/main"
 	include_ext = ["go", "html", "css"]
 	exclude_dir = ["tmp","bin"]
 	delay = 1000

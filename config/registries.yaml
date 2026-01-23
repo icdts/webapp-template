@@ -1,0 +1,5 @@
+docker:
+  registry.access.redhat.com:
+    sigstore: https://access.redhat.com/webassets/docker/content/sigstore
+  registry.redhat.io:
+    sigstore: https://access.redhat.com/webassets/docker/content/sigstore
