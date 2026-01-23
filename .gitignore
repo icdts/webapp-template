@@ -1,5 +1,6 @@
 # Ignore the specific bin directory we created
 /bin/
+/vendor/
 
 # Ignore compiled binaries if they accidentally end up in root
 *.exe

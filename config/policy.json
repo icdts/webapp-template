@@ -12,6 +12,11 @@
                     "keyType": "GPGKeys",
                     "keyPath": "tmp/assets/redhat-release.gpg"
                 }
+            ],
+						"public.ecr.aws": [
+                {
+                    "type": "insecureAcceptAnything"
+                }
             ]
         },
         "containers-storage": {

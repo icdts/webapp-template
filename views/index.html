@@ -4,45 +4,75 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Stack Verification Manifest</title>
+    
     <link rel="stylesheet" href="/static/style.css">
+    
     <script src="/assets/htmx.js"></script>
 </head>
 <body>
     <div class="card">
-        <div style="display: flex; align-items: center; gap: 15px;">
-            <span style="font-size: 2.5em;">🛠️</span>
-            <h1 style="margin: 0;">Stack Verification Manifest</h1>
+        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <span style="font-size: 2.5em;">🛠️</span>
+                    <h1 style="margin: 0;">Stack Verification Manifest</h1>
+                </div>
+                <p style="color: #64748b;">A personal template for Go, SQLite, and Postgres development.</p>
+            </div>
+
+            <div class="db-selector">
+                <label for="db-choice" style="font-size: 0.8em; color: #64748b; display: block; margin-bottom: 4px;">Active Backend</label>
+                <select name="db" id="db-choice" 
+                        hx-get="/" 
+                        hx-target="#table-root" 
+                        hx-push-url="true"
+                        style="padding: 8px; border-radius: 6px; border: 1px solid #cbd5e1; cursor: pointer;">
+                    <option value="sqlite" {{ if eq .Source "sqlite" }}selected{{ end }}>SQLite (Local)</option>
+                    <option value="postgres" {{ if eq .Source "postgres" }}selected{{ end }}>PostgreSQL (External)</option>
+                </select>
+            </div>
         </div>
-        <p style="color: #64748b;">Template for Go, SQLite, and HTMX development.</p>
+        
         <hr>
 
-        <table>
-            <thead>
-                <tr>
-                    <th>Ref</th>
-                    <th>Feature</th>
-                    <th>Verification Step / Proof</th>
-                    <th>Seeded At</th>
-                </tr>
-            </thead>
-            <tbody>
-                {{ range .Items }}
-                <tr>
-                    <td><code>#{{ .ID }}</code></td>
-                    <td><strong>{{ .Title }}</strong></td>
-                    <td><span class="verification-text">{{ .Status }}</span></td>
-                    <td style="color: #888; font-size: 0.85em;">
-                        {{ .CreatedAt.Format "Jan 02, 15:04:05" }}
-                    </td>
-                </tr>
-                {{ end }}
-            </tbody>
-        </table>
+        <div id="table-root">
+            {{ block "data-table" . }}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Ref</th>
+                        <th>Feature ({{ .Source }})</th>
+                        <th>Verification Step / Proof</th>
+                        <th>Seeded At</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{ range .Items }}
+                    <tr>
+                        <td><code>#{{ .ID }}</code></td>
+                        <td><strong>{{ .Title }}</strong></td>
+                        <td><span class="verification-text">{{ .Status }}</span></td>
+                        <td style="color: #888; font-size: 0.85em;">
+                            {{ .CreatedAt.Format "Jan 02, 15:04:05" }}
+                        </td>
+                    </tr>
+                    {{ else }}
+                    <tr>
+                        <td colspan="4" style="text-align: center; color: #cc0000; padding: 2rem;">
+                            No data found. Ensure the database is connected and seeded.
+                        </td>
+                    </tr>
+                    {{ end }}
+                </tbody>
+            </table>
+            {{ end }}
+        </div>
 
         <hr>
         
         <div id="demo-area">
             <h3>HTMX Live Test</h3>
+						<p>Proves the Go → HTMX bridge is active via dynamic routing.</p>
             <div id="htmx-target">
                 <button hx-get="/time" hx-swap="outerHTML" class="ping-btn">
                     Ping Server Time

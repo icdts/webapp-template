@@ -15,9 +15,14 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-// AppData holds data passed to templates
+type App struct {
+	SQLite   *sqlx.DB
+	Postgres *sqlx.DB
+}
+
 type AppData struct {
-	Items []models.Item
+	Items  []models.Item
+	Source string
 }
 
 type HandleFuncWithDb func(*sqlx.DB, http.ResponseWriter, *http.Request)
@@ -40,24 +45,36 @@ func main() {
 	}
 	log.Printf("HTMX file: %s", htmxPath)
 
-	dbPath := "tmp/app.db"
-	database, err := db.Connect(dbPath)
+	sqDB, err := db.ConnectSQLite("tmp/app.db")
 	if err != nil {
-		log.Fatal("Failed to init DB:", err)
+		log.Fatal("Failed to init sqlite DB:", err)
 	}
-	defer database.Close()
+	defer sqDB.Close()
 
-	setupRoutes(htmxPath, database)
+	pgDSN := os.Getenv("DATABASE_URL")
+	pgDB, err := db.ConnectPostgres(pgDSN)
+	if err != nil {
+		log.Println("Failed to init Postgres DB:", err)
+	}else{
+		defer pgDB.Close()
+	}
+
+	app := &App{
+		SQLite:   sqDB,
+		Postgres: pgDB,
+	}
+
+	http.HandleFunc("/healthz", healthz)
+	http.HandleFunc("/readyz", app.readyz)
+	http.HandleFunc("/assets/htmx.js", func(w http.ResponseWriter, r *http.Request) { http.ServeFile(w, r, htmxPath) })
+	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
+
+	http.HandleFunc("/", app.pageIndex)
+	http.HandleFunc("/time", pageTime)
 
 	log.Printf("Server starting on :%d", port)
 	if err := http.ListenAndServe(fmt.Sprintf(":%d", port), nil); err != nil {
 		log.Fatal(err)
-	}
-}
-
-func withDatabase(d *sqlx.DB, f HandleFuncWithDb) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		f(d, w, r)
 	}
 }
 
@@ -66,49 +83,53 @@ func healthz(w http.ResponseWriter, _ *http.Request) {
 	w.Write([]byte("ok"))
 }
 
-func readyz(database *sqlx.DB, w http.ResponseWriter, _ *http.Request) {
-	if database.Ping() != nil {
-		http.Error(w, "DB Not Ready", 503)
+func (app App) readyz(w http.ResponseWriter, _ *http.Request) {
+	if app.SQLite.Ping() != nil {
+		http.Error(w, "SQLite DB Not Ready", 503)
+		return
+	}
+	if app.Postgres != nil && app.Postgres.Ping() != nil {
+		http.Error(w, "Postgres DB Not Ready", 503)
 		return
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("ready"))
 }
 
-func setupRoutes(htmxPath string, database *sqlx.DB) {
-	http.HandleFunc("/healthz", healthz)
-	http.HandleFunc("/readyz", withDatabase(database, readyz))
+func (app App) pageIndex(w http.ResponseWriter, r *http.Request) {
+	dbType := r.URL.Query().Get("db")
+	if dbType == "" {
+		dbType = "sqlite"
+	}
 
-	http.HandleFunc("/assets/htmx.js", func(w http.ResponseWriter, r *http.Request) { http.ServeFile(w, r, htmxPath) })
-	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
-	http.HandleFunc("/", withDatabase(database, pageIndex))
-	http.HandleFunc("/time", pageTime)
-}
-
-func pageIndex(database *sqlx.DB, w http.ResponseWriter, r *http.Request) {
 	items := []models.Item{}
-	// Select directly into the struct slice
-	err := database.Select(&items, "SELECT * FROM items ORDER BY id ASC")
-	if err != nil {
-		http.Error(w, err.Error(), 500)
+	activeDB := app.SQLite
+	if dbType == "postgres"  {
+		activeDB = app.Postgres
+
+	}
+
+	if dbType != "postgres" || app.Postgres != nil {
+		err := activeDB.Select(&items, "SELECT * FROM items ORDER BY id ASC")
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+	}
+
+	tmpl, _ := template.ParseFiles("views/index.html")
+	data := AppData{Items: items, Source: dbType}
+
+	// If HTMX requested just the table, render the fragment
+	if r.Header.Get("HX-Request") != "" {
+		tmpl.ExecuteTemplate(w, "data-table", data)
 		return
 	}
 
-	tmpl, err := template.ParseFiles("views/index.html")
-	if err != nil {
-		http.Error(w, err.Error(), 500)
-		return
-	}
-
-	data := AppData{Items: items}
 	tmpl.Execute(w, data)
 }
 
 func pageTime(w http.ResponseWriter, r *http.Request) {
 	ts := time.Now().Format(time.RFC1123)
-	fmt.Fprintf(w, `
-			<button hx-get="/time" hx-swap="outerHTML" style="background-color: #d1fae5; border: 1px solid green; padding: 10px; border-radius: 5px;">
-				Verified at: %s
-			</button>
-	`, ts)
+	fmt.Fprintf(w, `<button hx-get="/time" hx-swap="outerHTML" class="ping-btn">Verified at: %s</button>`, ts)
 }

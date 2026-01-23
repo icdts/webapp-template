@@ -26,6 +26,10 @@
 
             gnupg
             podman
+
+            sqlite
+            pkg-config
+            postgresql
           ];
 
           shellHook =
