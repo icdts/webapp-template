@@ -1,5 +1,5 @@
 FROM registry.access.redhat.com/ubi9/go-toolset:latest AS base
-	USER 1001
+
 	WORKDIR /app
 
 	ENV GOBIN=/opt/app-root/bin
@@ -37,6 +37,7 @@ FROM registry.access.redhat.com/ubi9/ubi-minimal:latest AS prod
 	COPY --from=builder /app/main .
 	COPY --from=builder /app/views ./views
 	COPY tmp/assets/htmx.min.js /app/static/js/htmx.min.js
+	COPY static ./static
 
 	ENV HTMX_SRC="/app/static/js/htmx.min.js"
 	ENV PORT=8080

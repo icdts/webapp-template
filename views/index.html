@@ -1,11 +1,33 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <script src="/static/js/htmx.min.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebApp Template</title>
+    
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="/assets/htmx.js"></script>
+    
+    <style>
+        /* Inline styles for dynamic elements */
+        .verified-btn { background-color: #d1fae5; border: 1px solid green; padding: 10px; border-radius: 5px; cursor: pointer; }
+    </style>
 </head>
 <body>
-    <button hx-post="/clicked" hx-swap="outerHTML">
-        Click Me (HTMX Test)
-    </button>
+    <div class="card">
+        <h1>🚀 WebApp Template</h1>
+        <p>This stack is running on <strong>Red Hat UBI 9</strong>.</p>
+        <hr>
+        
+        <h3>Static & Asset Verification</h3>
+        <ul>
+            <li><strong>HTMX:</strong> Loaded from <code>/assets/</code> (System)</li>
+            <li><strong>CSS:</strong> Loaded from <code>/static/</code> (Project)</li>
+        </ul>
+
+        <button hx-get="/time" hx-swap="outerHTML" style="padding: 10px; margin-top: 10px;">
+            Click to Verify HTMX
+        </button>
+    </div>
 </body>
 </html>

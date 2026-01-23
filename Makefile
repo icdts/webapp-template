@@ -20,6 +20,7 @@ build:
 # Prepares all assets (Deps & HTMX) so Docker doesn't need internet
 prep:
 	go mod vendor
+	@mkdir -p vendor
 	
 	@mkdir -p $(PREP_DIR)
 	@cp -f "$(HTMX_SRC)" $(PREP_DIR)/htmx.min.js
@@ -50,7 +51,7 @@ container-prod: prep
 	@podman run -d \
 		-p 8080:8080 \
 		--rm \
-		--name htmlx-prod \
+		--name webapp-prod \
 		$(IMAGE_PRD)
 	@echo "# App running at http://localhost:8080"
 
