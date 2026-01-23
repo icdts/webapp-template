@@ -1,12 +1,12 @@
 .PHONY: run build clean
 
 # Defaults
-WEBAPP_PORT ?= 3000
+PORT ?= 3000
 
 # "make run" now starts the Live Reloader
 run:
-	@echo "# Starting Air (Live Reload) on http://localhost:$(WEBAPP_PORT)..."
-	WEBAPP_PORT=$(WEBAPP_PORT) air
+	@echo "# Starting Air (Live Reload) on http://localhost:$(PORT)..."
+	PORT=$(PORT) air
 
 build:
 	@echo "# Building binary to ./bin/web"

@@ -34,8 +34,8 @@
             in
             ''
               echo "Go version $(go version)"
-              export WEBAPP_HTMX_SRC=${htmxFile}
-              echo "WEBAPP_HTMX_SRC -> $WEBAPP_HTMX_SRC"
+              export HTMX_SRC=${htmxFile}
+              echo "HTMX_SRC -> $HTMX_SRC"
             '';
         };
       });
