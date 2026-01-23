@@ -1,0 +1,30 @@
+# Ignore the specific bin directory we created
+/bin/
+
+# Ignore compiled binaries if they accidentally end up in root
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# go testing
+*.test
+*.out
+
+# Air typically builds to a tmp folder by default
+tmp/
+
+# 'result' is the default symlink created by 'nix build'
+result
+result-*
+
+# common IDEs & Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS Specific
+.DS_Store
+Thumbs.db

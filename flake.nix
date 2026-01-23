@@ -21,6 +21,8 @@
             gopls
             gotools
             air
+
+            gnumake
           ];
 
           shellHook =
@@ -32,8 +34,8 @@
             in
             ''
               echo "Go version $(go version)"
-              export HTMX_SRC=${htmxFile}
-              echo "HTMX_SRC -> $HTMX_SRC"
+              export WEBAPP_HTMX_SRC=${htmxFile}
+              echo "WEBAPP_HTMX_SRC -> $WEBAPP_HTMX_SRC"
             '';
         };
       });
