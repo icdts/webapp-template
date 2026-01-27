@@ -49,6 +49,10 @@
               echo "HTMX_SRC -> $HTMX_SRC"
               export REDHAT_GPG="${redhatKey}"
               echo "REDHAT_GPG -> $REDHAT_GPG"
+
+              echo "HTMX_SRC copied to static as htmx.js"
+              cp -f "${htmxFile}" static/htmx.js
+              chmod +w static/htmx.js
             '';
         };
       });

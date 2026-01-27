@@ -33,7 +33,6 @@ prep:
 	@mkdir -p vendor
 	
 	@mkdir -p $(PREP_DIR)
-	@cp -f "$(HTMX_SRC)" $(PREP_DIR)/htmx.min.js
 	@cp -f "$(REDHAT_GPG)" $(PREP_DIR)/redhat-release.gpg
 
 # Starts a Live-Reload Dev Container

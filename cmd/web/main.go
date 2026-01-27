@@ -1,6 +1,7 @@
 package main
 
 import (
+	"embed"
 	"fmt"
 	"html/template"
 	"log"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/icdts/webapp/internal/db"
 	"github.com/icdts/webapp/internal/models"
+	"github.com/icdts/webapp"
 
 	"github.com/jmoiron/sqlx"
 )
@@ -67,7 +69,7 @@ func main() {
 	http.HandleFunc("/healthz", healthz)
 	http.HandleFunc("/readyz", app.readyz)
 	http.HandleFunc("/assets/htmx.js", func(w http.ResponseWriter, r *http.Request) { http.ServeFile(w, r, htmxPath) })
-	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
+	http.Handle("/static/", http.FileServer(http.FS(webapp.EmbeddedStatic)))
 
 	http.HandleFunc("/", app.pageIndex)
 	http.HandleFunc("/time", pageTime)
