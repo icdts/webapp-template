@@ -3,15 +3,15 @@ package main
 import (
 	"fmt"
 	"html/template"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"strconv"
 	"time"
 
+	"github.com/icdts/webapp"
 	"github.com/icdts/webapp/internal/db"
 	"github.com/icdts/webapp/internal/models"
-	"github.com/icdts/webapp"
 
 	"github.com/jmoiron/sqlx"
 )
@@ -19,6 +19,7 @@ import (
 type App struct {
 	SQLite   *sqlx.DB
 	Postgres *sqlx.DB
+	Log      *slog.Logger
 }
 
 type AppData struct {
@@ -32,37 +33,44 @@ func main() {
 	var err error
 	var port int
 
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+
 	portStr := os.Getenv("PORT")
 	if port, err = strconv.Atoi(portStr); err != nil {
-		log.Fatalf("PORT couldn't be converted to an int: %s", portStr)
+		logger.Error("invalid PORT configuration", "input", portStr, "error", err)
+		os.Exit(1)
 	}
 
 	htmxPath := os.Getenv("HTMX_SRC")
 	if htmxPath == "" {
-		log.Fatal("HTMX_SRC environment variable should be set to a path")
+		logger.Error("invalid HTMX_SRC configuration", "input", htmxPath, "error", "missing")
+		os.Exit(1)
 	}
 	if _, err := os.Stat(htmxPath); os.IsNotExist(err) {
-		log.Fatalf("HTMX_SRC environment variable points to a file that does not exist (%s)", htmxPath)
+		logger.Error("invalid HTMX_SRC configuration", "input", htmxPath, "error", err)
+		os.Exit(1)
 	}
-	log.Printf("HTMX file: %s", htmxPath)
+	logger.Info("HTMX file ready", "input", htmxPath)
 
 	sqDB, err := db.ConnectSQLite("tmp/app.db")
 	if err != nil {
-		log.Fatal("Failed to init sqlite DB:", err)
+		logger.Error("failed to init sqlite DB", "input", "tmp/app.db", "error", err)
+		os.Exit(1)
 	}
 	defer sqDB.Close()
 
 	pgDSN := os.Getenv("DATABASE_URL")
 	pgDB, err := db.ConnectPostgres(pgDSN)
 	if err != nil {
-		log.Println("Failed to init Postgres DB:", err)
-	}else{
+		logger.Warn("failed to init Postgres DB", "input", pgDSN, "error", err)
+	} else {
 		defer pgDB.Close()
 	}
 
 	app := &App{
 		SQLite:   sqDB,
 		Postgres: pgDB,
+		Log:      logger,
 	}
 
 	http.HandleFunc("/healthz", healthz)
@@ -73,9 +81,11 @@ func main() {
 	http.HandleFunc("/", app.pageIndex)
 	http.HandleFunc("/time", pageTime)
 
-	log.Printf("Server starting on :%d", port)
-	if err := http.ListenAndServe(fmt.Sprintf(":%d", port), nil); err != nil {
-		log.Fatal(err)
+	logger.Info("Listening", "input", port)
+	portStr = fmt.Sprintf(":%d", port)
+	if err := http.ListenAndServe(portStr, nil); err != nil {
+		logger.Error("failed to listen and serve", "input", portStr, "error", err)
+		os.Exit(1)
 	}
 }
 
@@ -105,7 +115,7 @@ func (app App) pageIndex(w http.ResponseWriter, r *http.Request) {
 
 	items := []models.Item{}
 	activeDB := app.SQLite
-	if dbType == "postgres"  {
+	if dbType == "postgres" {
 		activeDB = app.Postgres
 
 	}

@@ -1,8 +1,6 @@
 package db
 
 import (
-	"log"
-
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
@@ -57,7 +55,6 @@ func setupDB(db *sqlx.DB) {
 	var count int
 	err := db.Get(&count, "SELECT COUNT(*) FROM items")
 	if err == nil && count == 0 {
-		log.Println("Seeding database...")
 		seed(db)
 	}
 }
