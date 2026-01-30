@@ -1,12 +1,15 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"html/template"
 	"log/slog"
 	"net/http"
 	"os"
+	"os/signal"
 	"strconv"
+	"syscall"
 	"time"
 
 	"github.com/icdts/webapp"
@@ -28,8 +31,44 @@ type AppData struct {
 }
 
 type HandleFuncWithDb func(*sqlx.DB, http.ResponseWriter, *http.Request)
+type responseWriterWrapper struct {
+    http.ResponseWriter
+    statusCode int
+}
+
+func (rw *responseWriterWrapper) WriteHeader(code int) {
+    rw.statusCode = code
+    rw.ResponseWriter.WriteHeader(code)
+}
+
+func (app *App) loggingMiddleware(next http.Handler) http.Handler {
+    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        start := time.Now()
+
+        wrapped := &responseWriterWrapper{
+            ResponseWriter: w,
+            statusCode:     http.StatusOK,
+        }
+
+        next.ServeHTTP(wrapped, r)
+
+        duration := time.Since(start)
+
+        app.Log.Info("request_completed",
+            "method", r.Method,
+            "path", r.URL.Path,
+            "status", wrapped.statusCode,
+            "duration", duration,
+            "ip", r.RemoteAddr,
+            "user_agent", r.UserAgent(),
+        )
+    })
+}
+
+
 
 func main() {
+
 	var err error
 	var port int
 
@@ -37,32 +76,34 @@ func main() {
 
 	portStr := os.Getenv("PORT")
 	if port, err = strconv.Atoi(portStr); err != nil {
-		logger.Error("invalid PORT configuration", "input", portStr, "error", err)
+		logger.Error("config", "status", "invalid", "param", "PORT", "value", portStr, "error", err)
 		os.Exit(1)
 	}
 
 	htmxPath := os.Getenv("HTMX_SRC")
 	if htmxPath == "" {
-		logger.Error("invalid HTMX_SRC configuration", "input", htmxPath, "error", "missing")
+		logger.Error("config", "status", "invalid", "param", "HTMX_SRC", "value", htmxPath, "error", "missing")
 		os.Exit(1)
 	}
 	if _, err := os.Stat(htmxPath); os.IsNotExist(err) {
-		logger.Error("invalid HTMX_SRC configuration", "input", htmxPath, "error", err)
+		logger.Error("config", "status", "invalid", "param", "HTMX_SRC", "value", htmxPath, "error", err)
 		os.Exit(1)
 	}
-	logger.Info("HTMX file ready", "input", htmxPath)
+	logger.Info("config", "status", "valid", "param", "HTMX_SRC", "value", htmxPath)
 
-	sqDB, err := db.ConnectSQLite("tmp/app.db")
+	dbCtx, dbCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer dbCancel()
+	sqDB, err := db.ConnectSQLite(dbCtx,"tmp/app.db")
 	if err != nil {
-		logger.Error("failed to init sqlite DB", "input", "tmp/app.db", "error", err)
+		logger.Error("db_init", "status", "failed",  "db_type", "sqlite", "path", "tmp/app.db", "error", err)
 		os.Exit(1)
 	}
 	defer sqDB.Close()
 
 	pgDSN := os.Getenv("DATABASE_URL")
-	pgDB, err := db.ConnectPostgres(pgDSN)
+	pgDB, err := db.ConnectPostgres(dbCtx,pgDSN)
 	if err != nil {
-		logger.Warn("failed to init Postgres DB", "input", pgDSN, "error", err)
+		logger.Warn("db_init", "status", "failed", "db_type", "postgres", "error", err)
 	} else {
 		defer pgDB.Close()
 	}
@@ -73,20 +114,45 @@ func main() {
 		Log:      logger,
 	}
 
-	http.HandleFunc("/healthz", healthz)
-	http.HandleFunc("/readyz", app.readyz)
-	http.HandleFunc("/assets/htmx.js", func(w http.ResponseWriter, r *http.Request) { http.ServeFile(w, r, htmxPath) })
-	http.Handle("/static/", http.FileServer(http.FS(webapp.EmbeddedStatic)))
+	mux := http.NewServeMux()
+	mux.HandleFunc("/healthz", healthz)
+	mux.HandleFunc("/readyz", app.readyz)
+	mux.HandleFunc("/assets/htmx.js", func(w http.ResponseWriter, r *http.Request) { http.ServeFile(w, r, htmxPath) })
+	mux.Handle("/static/", http.FileServer(http.FS(webapp.EmbeddedStatic)))
 
-	http.HandleFunc("/", app.pageIndex)
-	http.HandleFunc("/time", pageTime)
+	mux.HandleFunc("/", app.pageIndex)
+	mux.HandleFunc("/time", pageTime)
 
-	logger.Info("Listening", "input", port)
+	handler := app.loggingMiddleware(mux)
+
 	portStr = fmt.Sprintf(":%d", port)
-	if err := http.ListenAndServe(portStr, nil); err != nil {
-		logger.Error("failed to listen and serve", "input", portStr, "error", err)
-		os.Exit(1)
+	srv := &http.Server{
+		Addr: portStr,
+		Handler: handler,
 	}
+
+	go func() {
+		logger.Info("server_startup", "address", port)
+		// ErrServerClosed is a normal error returned when we call Shutdown(), so we ignore it
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			logger.Error("server_startup", "address", portStr, "error", err)
+			os.Exit(1)
+		}
+	}()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+
+	<-quit
+	logger.Info("server_shutdown", "status", "started")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(ctx); err != nil {
+		logger.Error("server_shutdown", "status", "forced", "error", err)
+	}
+
+	logger.Info("server_shutdown", "status", "complete")
 }
 
 func healthz(w http.ResponseWriter, _ *http.Request) {
@@ -121,7 +187,7 @@ func (app App) pageIndex(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if dbType != "postgres" || app.Postgres != nil {
-		err := activeDB.Select(&items, "SELECT * FROM items ORDER BY id ASC")
+		err := activeDB.SelectContext(r.Context(), &items, "SELECT * FROM items ORDER BY id ASC")
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 			return

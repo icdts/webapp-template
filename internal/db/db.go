@@ -1,6 +1,8 @@
 package db
 
 import (
+	"context"
+
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
@@ -21,45 +23,45 @@ var postgresCreateTable = `
 			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 	);`
 
-func ConnectSQLite(dbPath string) (*sqlx.DB, error) {
+func ConnectSQLite(ctx context.Context, dbPath string) (*sqlx.DB, error) {
 	// Driver name is "sqlite3" for the CGO driver
-	db, err := sqlx.Connect("sqlite3", dbPath)
+	db, err := sqlx.ConnectContext(ctx, "sqlite3", dbPath)
 	if err != nil {
 		return nil, err
 	}
-	setupDB(db)
+	setupDB(ctx, db)
 	return db, nil
 }
 
-func ConnectPostgres(dsn string) (*sqlx.DB, error) {
+func ConnectPostgres(ctx context.Context, dsn string) (*sqlx.DB, error) {
 	// Using pgx stdlib bridge as discussed
-	db, err := sqlx.Connect("pgx", dsn)
+	db, err := sqlx.ConnectContext(ctx, "pgx", dsn)
 	if err != nil {
 		return nil, err
 	}
-	setupDB(db)
+	setupDB(ctx, db)
 	return db, nil
 }
 
-func setupDB(db *sqlx.DB) {
+func setupDB(ctx context.Context, db *sqlx.DB) {
 	switch db.DriverName() {
-		case "sqlite3":	
-			db.MustExec(sqliteCreateTable)
-		case "pgx": 
-			db.MustExec(postgresCreateTable)
-		default:
-			return
+	case "sqlite3":
+		db.MustExecContext(ctx, sqliteCreateTable)
+	case "pgx":
+		db.MustExecContext(ctx, postgresCreateTable)
+	default:
+		return
 	}
 
 	// Check if we need to seed
 	var count int
-	err := db.Get(&count, "SELECT COUNT(*) FROM items")
+	err := db.GetContext(ctx, &count, "SELECT COUNT(*) FROM items")
 	if err == nil && count == 0 {
-		seed(db)
+		seed(ctx, db)
 	}
 }
 
-func seed(db *sqlx.DB) {
+func seed(ctx context.Context, db *sqlx.DB) {
 	items := []struct {
 		Title  string
 		Status string
@@ -71,6 +73,6 @@ func seed(db *sqlx.DB) {
 	}
 
 	for _, item := range items {
-		db.MustExec("INSERT INTO items (title, status) VALUES ($1, $2)", item.Title, item.Status)
+		db.MustExecContext(ctx, "INSERT INTO items (title, status) VALUES ($1, $2)", item.Title, item.Status)
 	}
 }
