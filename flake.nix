@@ -23,13 +23,13 @@
             air
 
             gnumake
-
             gnupg
             podman
+            pkg-config
 
             sqlite
-            pkg-config
             postgresql
+            atlas
           ];
 
           shellHook =
@@ -51,8 +51,13 @@
               echo "REDHAT_GPG -> $REDHAT_GPG"
 
               echo "HTMX_SRC copied to static as htmx.js"
-              cp -f "${htmxFile}" static/htmx.js
-              chmod +w static/htmx.js
+              cp -f "${htmxFile}" static/js/htmx.js
+              chmod +w static/js/htmx.js
+
+              export ATLAS_DEV_DB="webapp-atlas-dev"
+              make databases-up
+              
+              mkdir -p tmp/build
             '';
         };
       });

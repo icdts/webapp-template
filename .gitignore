@@ -1,6 +1,6 @@
 /bin/
 /vendor/
-/static/htmx.js
+/static/js/htmx.js
 
 # Ignore compiled binaries if they accidentally end up in root
 *.exe

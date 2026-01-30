@@ -3,10 +3,11 @@ tmp_dir = "tmp/build"
 
 [build]
 	cmd = "go build -o ./tmp/build/main ./cmd/web/main.go"
-	bin = "./tmp/build/main"
-	include_ext = ["go", "html", "css"]
+	entrypoint = [ "./tmp/build/main" ]
+	include_ext = ["go", "tpl", "tmpl", "html", "sql"]
 	exclude_dir = ["assets","tmp","vendor","bin"]
 	delay = 1000
+	log_level = "debug"
 
 [log]
 	time = true
